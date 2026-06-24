@@ -1,129 +1,135 @@
-# Titanic - Machine Learning from Disaster
+# Titanic — Machine Learning from Disaster
 
-## Project Description
-This project addresses the classic Titanic dataset challenge, aiming to predict passenger survival using a variety of machine learning techniques. The workflow covers the entire data science pipeline: from data acquisition and exploratory data analysis (EDA), through data cleaning and feature engineering, to model selection, training, evaluation, and interpretation. The project is inspired by the Kaggle competition "Titanic: Machine Learning from Disaster" and is designed as a comprehensive, educational example for beginners and intermediate data scientists.
+**A start-to-finish survival classification walkthrough on the Kaggle Titanic dataset: EDA, cleaning, encoding, and three models compared in one notebook.**
 
----
+![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white) ![Jupyter](https://img.shields.io/badge/Jupyter-F37626?style=flat&logo=jupyter&logoColor=white) ![pandas](https://img.shields.io/badge/pandas-150458?style=flat&logo=pandas&logoColor=white) ![NumPy](https://img.shields.io/badge/NumPy-013243?style=flat&logo=numpy&logoColor=white) ![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=flat&logo=scikitlearn&logoColor=white) ![Matplotlib](https://img.shields.io/badge/Matplotlib-11557C?style=flat&logo=matplotlib&logoColor=white) ![Seaborn](https://img.shields.io/badge/Seaborn-4C72B0?style=flat&logo=python&logoColor=white)
 
-## Project Details
-### Problem Statement
-The objective is to build a machine learning model that predicts which passengers survived the Titanic tragedy based on features such as age, sex, and class.
+## Overview
 
-### Data Exploration
-- Assessed data quality and missing values
-- Explored the impact of features like Age, Sex, and Embarked on survival
-- Visualized distributions of categorical and numerical variables
+This is my take on the classic Kaggle problem "Titanic: Machine Learning from Disaster" — predict which passengers survived the 1912 sinking from features like age, sex, and ticket class. It's a single Jupyter notebook that walks the full pipeline: load the data, look at it, clean it, turn the text columns into numbers, train a few models, and turn their outputs into survival predictions.
 
-### Data Cleaning
-- Removed irrelevant columns (Cabin, Name, Ticket)
-- Filled missing values (numerical: median, categorical: most frequent)
-- Encoded categorical variables numerically
+I built it as a learning project to get comfortable with the standard tabular ML workflow in scikit-learn end to end, rather than to chase a leaderboard score. The dataset has 891 passengers and 12 columns, and the notebook trains three different models on it (Linear Regression, Logistic Regression, and a Random Forest classifier) so I could compare how each handles the same problem.
 
-### Model Training
-- Trained and evaluated three models:
-  1. Linear Regression
-  2. Logistic Regression
-  3. Random Forest Classifier
-- Converted prediction probabilities to binary survival outcomes
-- Saved predictions for each model
+## Key Features
 
----
+- Loads and inspects the Titanic passenger data (`.info()`, `.describe()`, null counts, row count).
+- Exploratory data analysis with pandas crosstabs and Matplotlib/Seaborn plots for Age, Sex, and Embarked against survival.
+- Missing-value handling: numeric columns filled with the median, the `Embarked` column filled with its most common port (`S`).
+- Drops columns that don't help a plain tabular model — `Cabin` (mostly empty), plus `Name` and `Ticket` (free-text, not categorical here).
+- Manual label encoding: each text column is mapped to integers with a per-column dictionary loop instead of an off-the-shelf encoder.
+- Trains three models on the same features: Linear Regression, Logistic Regression, and a Random Forest classifier.
+- Converts each model's output to a binary survived/not-survived label by thresholding at 0.5 (so even the regression output becomes a clean 0/1).
+- Collects predictions into per-model `PassengerId → Survived` DataFrames, Kaggle-submission style.
+
+## How It Works
+
+The whole thing lives in `Titanic.ipynb` (55 cells). It follows a straight data-to-prediction pipeline.
+
+### 1. Load and explore
+
+The notebook reads the training data, then checks its shape and health — `len(df)`, `.info()`, `.describe()`, and a per-column `isna().sum()` to find the missing values. The three columns with real gaps are `Age`, `Cabin`, and `Embarked`.
+
+EDA is done mostly with `pd.crosstab` plus bar/count plots:
+
+- **Sex vs Survived** — the strongest signal in the data.
+- **Embarked vs Survived** — survival counts split by port of embarkation (C / Q / S).
+- **Age vs Survived** — a crosstab across 88 distinct age values, plus a count plot.
+
+### 2. Clean the data
+
+- `Cabin` is dropped because most of its values are missing.
+- `Name` and `Ticket` are dropped — they're high-cardinality free text, not useful categories for this model.
+- Numeric columns with gaps (e.g. `Age`) are filled with the column median, via a loop that checks each column's dtype.
+- `Embarked` is filled with `"S"`, the most frequent port.
+
+### 3. Encode the categoricals
+
+Instead of using `LabelEncoder` or one-hot, the notebook does its own encoding: for every object-dtype column, it walks the unique values, builds a `{value: integer}` dictionary, and replaces the strings in place. This is applied to the train and test frames separately.
+
+### 4. Train the models
+
+Features are split into `X` (everything except `Survived`) and `y` (the `Survived` column). Three models are fit on the same `X`/`y`:
+
+1. `LinearRegression`
+2. `LogisticRegression`
+3. `RandomForestClassifier`
+
+Each one predicts on the test frame.
+
+### 5. Turn predictions into labels
+
+Predictions are packed into DataFrames keyed by `PassengerId`. Because Linear Regression returns continuous values (and to keep all three consistent), every prediction is thresholded with `np.where(pred >= 0.5, 1, 0)` to produce a final 0/1 survival label per passenger.
+
+## Results / Highlights
+
+This is a training/inference notebook, not an evaluation harness — the test set has no ground-truth labels, so the notebook doesn't compute accuracy or a classification report on it. The metric imports are there but aren't used. What it does produce that's worth quoting is the EDA, where the survival patterns come out clearly in the actual crosstab counts:
+
+- **Sex is the dominant factor.** Of 314 women, 233 survived and 81 did not (~74% survived). Of 577 men, only 109 survived against 468 lost (~19% survived).
+- **Port of embarkation tracks survival too.** Cherbourg (C): 93 survived / 75 lost. Queenstown (Q): 30 / 47. Southampton (S): 217 / 427.
+- **Children skew toward surviving.** The youngest age bins in the Age-vs-Survived crosstab (passengers under ~1 year) survived almost across the board.
+- **Scale:** 891 passengers, 12 original columns, reduced to a numeric feature set after dropping `Cabin`, `Name`, and `Ticket`; 3 models trained for comparison.
 
 ## Tech Stack
-- **Programming Language:** Python 3.x
-- **Data Analysis:** Pandas, NumPy
-- **Visualization:** Matplotlib, Seaborn
-- **Machine Learning:** Scikit-learn
-- **Environment:** Jupyter Notebook
 
----
+- **Language:** Python 3.x
+- **Notebook:** Jupyter
+- **Data:** pandas, NumPy
+- **Visualization:** Matplotlib, Seaborn
+- **ML:** scikit-learn (`LinearRegression`, `LogisticRegression`, `RandomForestClassifier`)
 
 ## Getting Started
 
 ### Prerequisites
-- Python 3.x installed on your system
-- Jupyter Notebook (install via Anaconda or pip)
 
-### 1. Clone the Repository
+- Python 3.x
+- Jupyter Notebook (via Anaconda or pip)
+
+### Installation
+
 ```bash
 git clone https://github.com/DCode-v05/Titanic.git
 cd Titanic
+pip install pandas numpy matplotlib seaborn scikit-learn jupyter
 ```
 
-### 2. Install Dependencies
-Install the required Python packages using pip:
-```bash
-pip install pandas numpy matplotlib seaborn scikit-learn
-```
+### Running
 
-### 3. Launch the Notebook
-Start Jupyter Notebook in your browser:
 ```bash
 jupyter notebook Titanic.ipynb
 ```
 
----
+> Note on data paths: the notebook reads `Titanic/train.csv` and `Titanic/test.csv` — the original two-file Kaggle download. This repo ships the combined `Titanic-Dataset.csv` (891 rows, same columns) instead, so to run the notebook as written you'll want the Kaggle train/test files, or point the `read_csv` calls at `Titanic-Dataset.csv`.
 
 ## Usage
-1. **Open `Titanic.ipynb` in Jupyter Notebook.**
-2. **Run the cells sequentially:**
-   - **Data Loading:** Loads the Titanic dataset (`Titanic-Dataset.csv`).
-   - **Exploratory Data Analysis:** Visualizes distributions, relationships, and missing values.
-   - **Data Cleaning:** Handles missing data, drops irrelevant columns, and encodes categorical variables.
-   - **Feature Engineering:** Creates new features or transforms existing ones for better model performance.
-   - **Model Training:** Trains Linear Regression, Logistic Regression, and Random Forest models.
-   - **Model Evaluation:** Compares models using various metrics and visualizations.
-   - **Prediction:** Outputs survival predictions and interprets results.
-3. **Modify or extend the notebook** to experiment with new features, models, or visualizations.
 
----
+Open `Titanic.ipynb` and run the cells top to bottom. The flow is:
+
+1. **Load** the data and print its info, description, and null counts.
+2. **Explore** survival against Age, Sex, and Embarked with crosstabs and plots.
+3. **Clean** — drop `Cabin`/`Name`/`Ticket`, fill numeric nulls with the median and `Embarked` with `S`.
+4. **Encode** the remaining text columns to integers.
+5. **Train** the three models on `X` (features) and `y` (`Survived`).
+6. **Predict** on the test data and read off the per-passenger survived/not-survived labels.
+
+To experiment, swap in different features, try other scikit-learn models, or add a labeled validation split so you can actually score accuracy/precision/recall (the metric imports are already in the first cell, ready to use).
 
 ## Project Structure
+
 ```
 Titanic/
-├── Titanic.ipynb           # Main Jupyter Notebook with full workflow, code, and analysis
-├── Titanic-Dataset.csv     # Titanic dataset (combined train/test)
-├── README.md               # Project documentation (this file)
+├── Titanic.ipynb         # Full workflow: EDA → cleaning → encoding → 3 models → predictions (55 cells)
+├── Titanic-Dataset.csv   # Titanic passenger data, 891 rows × 12 columns
+└── README.md             # Project documentation
 ```
-- **Titanic.ipynb:** Contains all code, visualizations, and explanations. Well-commented for learning and reproducibility.
-- **Titanic-Dataset.csv:** The dataset used for analysis and modeling. Contains passenger information, survival status, and relevant features.
-- **README.md:** Detailed project documentation, setup instructions, and guidelines.
-
----
-
-## Results
-- **Best Model:** The Random Forest Classifier achieved the highest accuracy among the tested models.
-- **Key Insights:**
-  - Female passengers had a much higher survival rate than males.
-  - Passengers in higher classes (1st class) were more likely to survive.
-  - Younger passengers and children had a higher chance of survival.
-- **Model Metrics:**
-  - Accuracy, precision, recall, and F1-score are reported for each model in the notebook.
-  - Confusion matrices and classification reports are provided for detailed evaluation.
-
----
-
-## Contributing
-
-Contributions are welcome! To contribute:
-1. Fork the repository
-2. Create a new branch:
-   ```bash
-   git checkout -b feature/your-feature
-   ```
-3. Commit your changes:
-   ```bash
-   git commit -m "Add your feature"
-   ```
-4. Push to your branch:
-   ```bash
-   git push origin feature/your-feature
-   ```
-5. Open a pull request describing your changes.
 
 ---
 
 ## Contact
-- **GitHub:** [DCode-v05](https://github.com/DCode-v05)
-- **Email :** denistanb05@gmail.com
 
+**Portfolio:** [Denistan](https://www.denistan.me)<br>
+**LinkedIn:** [Denistan](https://www.linkedin.com/in/denistanb)<br>
+**GitHub:** [DCode-v05](https://github.com/DCode-v05)<br>
+**LeetCode:** [Denistan_B](https://leetcode.com/u/Denistan_B)<br>
+**Email:** [denistanb05@gmail.com](mailto:denistanb05@gmail.com)
+
+Made with ❤️ by **Denistan B**
